@@ -1,25 +1,49 @@
+using Autofac;
 using Kentico.Content.Web.Mvc;
 using Kentico.Content.Web.Mvc.Routing;
 using Kentico.Web.Mvc;
-
+using MedioClinic.Configuration;
+using MedioClinic.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Reflection;
+using XperienceAdapter.Configuration;
+using XperienceAdapter.Localization;
 
-namespace BlankSiteCore
+namespace MedioClinic
 {
     public class Startup
     {
         public IWebHostEnvironment Environment { get; }
 
+        public IConfigurationSection? Options { get; }
 
-        public Startup(IWebHostEnvironment environment)
+         public Startup(IWebHostEnvironment environment, IConfiguration configuration)
         {
             Environment = environment;
+            Options = configuration.GetSection(nameof(XperienceOptions));    
         }
 
+        public AutoFacConfig AutoFacConfig => new AutoFacConfig();
+
+        private void RegisterInitializationHandler(ContainerBuilder builder) =>
+            CMS.Base.ApplicationEvents.Initialized.Execute += (sender, eventArgs) => AutoFacConfig.ConfigureContainer(builder);
+
+        public void ConfigureContainer(ContainerBuilder builder)
+        {
+            try
+            {
+                AutoFacConfig.ConfigureContainer(builder);
+            }
+            catch
+            {
+                RegisterInitializationHandler(builder);
+            }
+        }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
@@ -35,7 +59,8 @@ namespace BlankSiteCore
                 // features.UseEmailTracking();
                 // features.UseCampaignLogger();
                 // features.UseScheduler();
-                // features.UsePageRouting();
+                   features.UsePageRouting(new PageRoutingOptions { CultureCodeRouteValuesKey = "culture" });
+
             });
 
             if (Environment.IsDevelopment())
@@ -52,11 +77,22 @@ namespace BlankSiteCore
                 // cookies and this information is taken from the URL.
                 kenticoServiceCollection.DisableVirtualContextSecurityForLocalhost();
             }
+            services.Configure<XperienceOptions>(Options);
 
-            services.AddAuthentication();
+            // services.AddAuthentication();
             // services.AddAuthorization();
+            services.AddLocalization();
 
-            services.AddControllersWithViews();
+            services.AddControllersWithViews()
+    .AddDataAnnotationsLocalization(options =>
+    {
+        options.DataAnnotationLocalizerProvider = (type, factory) =>
+        {
+            var assemblyName = typeof(SharedResource).GetTypeInfo().Assembly.GetName().Name;
+
+            return factory.Create("SharedResource", assemblyName);
+        };
+    });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -70,12 +106,41 @@ namespace BlankSiteCore
             app.UseStaticFiles();
 
             app.UseKentico();
+            app.UseRequestCulture();
 
-            app.UseCookiePolicy();
+            app.UseLocalizedStatusCodePagesWithReExecute("/{0}/error/{1}/");
 
-            app.UseCors();
+            app.UseExceptionHandler(errorApp =>
+            {
+                errorApp.Run(async context =>
+                {
+                    context.Response.StatusCode = 500;
+                    context.Response.ContentType = "text/html";
 
-            app.UseAuthentication();
+                    await context.Response.WriteAsync("<html lang=\"en\"><body>\r\n");
+                    await context.Response.WriteAsync("An error happened.<br><br>\r\n");
+
+                    var exceptionHandlerPathFeature =
+                        context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+
+                    if (exceptionHandlerPathFeature?.Error is System.IO.FileNotFoundException)
+                    {
+                        await context.Response.WriteAsync("A file error happened.<br><br>\r\n");
+                    }
+
+                    await context.Response.WriteAsync("<a href=\"/\">Home</a><br>\r\n");
+                    await context.Response.WriteAsync("</body></html>\r\n");
+                    await context.Response.WriteAsync(new string(' ', 512)); // IE padding
+                });
+            });
+
+            app.UseBrowserLink();
+
+           // app.UseCookiePolicy();
+
+            //app.UseCors();
+
+           // app.UseAuthentication();
             // app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
