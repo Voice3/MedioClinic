@@ -1,4 +1,5 @@
 using Autofac;
+using Core.Configuration;
 using Kentico.Content.Web.Mvc;
 using Kentico.Content.Web.Mvc.Routing;
 using Kentico.Web.Mvc;
@@ -11,7 +12,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Reflection;
-using XperienceAdapter.Configuration;
 using XperienceAdapter.Localization;
 
 namespace MedioClinic

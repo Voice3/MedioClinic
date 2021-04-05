@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace XperienceAdapter.Configuration
+namespace Core.Configuration
 {
 	public class XperienceOptions
 	{
