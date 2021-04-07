@@ -16,9 +16,9 @@ namespace Business.Repositories
 		{
 			dto.City = page.City;
 			dto.Country = page.Country;
-			dto.EmailAddress = page.Email; //EmailAddress
+			dto.EmailAddress = page.EmailAddress; //EmailAddress
 			dto.PhoneNumber = page.PhoneNumber;
-			dto.PostalCode = page.ZipCode; //POstCode
+			dto.PostalCode = page.PostalCode; //POstCode
 			dto.Street = page.Street;
 		}
 

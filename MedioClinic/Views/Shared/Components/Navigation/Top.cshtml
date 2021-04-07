@@ -1,4 +1,4 @@
-﻿@using MedioClinic.Components.ViewComponents
+﻿@using MedioClinic.ViewComponents
 @using MedioClinic.Models.ViewComponents
 @using MedioClinic.Models.ViewComponents.Navigation
 @model Business.Models.NavigationItem
@@ -33,7 +33,7 @@
     <nav role="navigation">
         <div class="nav-wrapper container">
             <a class="brand-logo" href="@PageUrlRetriever.Retrieve("/Home")?.AbsoluteUrl">
-                <img class="mc-logo" src="@Html.Raw(Model.RelativeUrl)" alt="@Options.Value.CompanyName" />
+                <img class="mc-logo" src="@Html.Raw(logoUrl.RelativePath)" alt="@Options.Value.CompanyName" />
                 <span class="mc-logo-text">@Options?.Value?.CompanyName</span>
             </a>
             <a class="sidenav-trigger" href="#" data-target="top-navigation-mobile">

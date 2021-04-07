@@ -1,4 +1,4 @@
-﻿@using MedioClinic.Models.ViewComponents
+﻿@using MedioClinic.ViewComponents
 @model (string CultureSwitchId, Dictionary<XperienceAdapter.Models.SiteCulture, string> Variants)
 
 @{
@@ -15,3 +15,4 @@
         <partial name="@triggerViewName" model="@(Model.CultureSwitchId, titleIcon, orderedItems)" />
     }
 }
+

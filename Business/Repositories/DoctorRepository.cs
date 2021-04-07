@@ -37,11 +37,11 @@ namespace Business.Repositories
 			dto.Biography = page.Fields.Biography;
 			dto.Specialty = page.Specialty;
 
-			//Can't locate BackdropPicture
-			//if (page.Fields.BackdropPicture != null)
-			//	{
-			//	dto.BackdropPictureUrl = _repositoryServices.PageAttachmentUrlRetriever.Retrieve(page.Fields.BackdropPicture);
-			//}
+
+			if (page.Fields.BackdropPicture != null)
+		    {
+				dto.BackdropPictureUrl = _repositoryServices.PageAttachmentUrlRetriever.Retrieve(page.Fields.BackdropPicture);
+			}
 
 			var culture = Thread.CurrentThread.CurrentUICulture.ToSiteCulture();
 

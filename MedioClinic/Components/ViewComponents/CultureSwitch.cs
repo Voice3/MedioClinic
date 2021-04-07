@@ -1,118 +1,119 @@
 ﻿#define no_suffix
-using Business.Models;
-using Business.Repositories;
-using Microsoft.AspNetCore.Mvc;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+
 using XperienceAdapter.Extensions;
 using XperienceAdapter.Models;
 using XperienceAdapter.Repositories;
+using Business.Models;
+using Business.Repositories;
 
-namespace MedioClinic.Components.ViewComponents
+namespace MedioClinic.ViewComponents
 {
-	public class CultureSwitch : ViewComponent
-	{
-		private readonly INavigationRepository _navigationRepository;
+    public class CultureSwitch : ViewComponent
+    {
+        private readonly INavigationRepository _navigationRepository;
 
-		private readonly ISiteCultureRepository _siteCultureRepository;
+        private readonly ISiteCultureRepository _siteCultureRepository;
 
-		public CultureSwitch(ISiteCultureRepository siteCultureRepository, INavigationRepository navigationRepository)
-		{
-			_siteCultureRepository = siteCultureRepository ?? throw new ArgumentNullException(nameof(siteCultureRepository));
-			_navigationRepository = navigationRepository ?? throw new ArgumentNullException(nameof(navigationRepository));
-		}
+        public CultureSwitch(ISiteCultureRepository siteCultureRepository, INavigationRepository navigationRepository)
+        {
+            _siteCultureRepository = siteCultureRepository ?? throw new ArgumentNullException(nameof(siteCultureRepository));
+            _navigationRepository = navigationRepository ?? throw new ArgumentNullException(nameof(navigationRepository));
+        }
 
-		private NavigationItem? GetNavigationItemByRelativeUrl(string searchPath, NavigationItem startingPointItem)
-		{
-			if (startingPointItem != null)
-			{
-				var parsed = Url.Content(startingPointItem.RelativeUrl);
+        public IViewComponentResult Invoke(string cultureSwitchId)
+        {
+            var variants = GetUrlCultureVariants();
+            var model = (cultureSwitchId, variants.ToDictionary(kvp1 => kvp1.Key, kvp2 => kvp2.Value));
 
-				if (parsed?.Equals(searchPath, StringComparison.OrdinalIgnoreCase) == true)
-				{
-					return startingPointItem;
-				}
-				else if (startingPointItem.ChildItems?.Any() == true)
-				{
-					var matches = new List<NavigationItem>();
+            return View(model);
+        }
 
-					foreach (var child in startingPointItem.ChildItems)
-					{
-						var childMatch = GetNavigationItemByRelativeUrl(searchPath, child);
-						matches.Add(childMatch!);
-					}
+        private IEnumerable<KeyValuePair<SiteCulture, string>>? GetUrlCultureVariants()
+        {
+            var defaultCulture = _siteCultureRepository.DefaultSiteCulture;
+            var searchPath = Request.Path.Equals("/") && defaultCulture != null ? $"/{defaultCulture.IsoCode?.ToLowerInvariant()}/home/" : Request.Path.Value;
+            var currentCulture = Thread.CurrentThread.CurrentUICulture.ToSiteCulture();
 
-					return matches.FirstOrDefault(match => match != null);
-				}
-			}
+            if (currentCulture != null)
+            {
+                return GetDatabaseUrlVariants(searchPath, currentCulture) ?? GetNonDatabaseUrlVariants(searchPath);
+            }
 
-			return null;
-		}
+            return null;
+        }
 
-		private IEnumerable<KeyValuePair<SiteCulture, string>>? GetDatabaseUrlVariants(string searchPath, SiteCulture currentCulture)
-		{
-			var navigation = _navigationRepository.GetWholeNavigation();
-			var currentPageNavigationItem = GetNavigationItemByRelativeUrl(searchPath, navigation[currentCulture]);
+        private IEnumerable<KeyValuePair<SiteCulture, string>>? GetDatabaseUrlVariants(string searchPath, SiteCulture currentCulture)
+        {
+            var navigation = _navigationRepository.GetWholeNavigation();
+            var currentPageNavigationItem = GetNavigationItemByRelativeUrl(searchPath, navigation[currentCulture]);
 
-			if (currentPageNavigationItem != null)
-			{
-				var databaseVariants = new List<KeyValuePair<SiteCulture, NavigationItem>>();
-				databaseVariants.Add(new KeyValuePair<SiteCulture, NavigationItem>(currentCulture, currentPageNavigationItem));
+            if (currentPageNavigationItem != null)
+            {
+                var databaseVariants = new List<KeyValuePair<SiteCulture, NavigationItem>>();
+                databaseVariants.Add(new KeyValuePair<SiteCulture, NavigationItem>(currentCulture, currentPageNavigationItem));
 
-				foreach (var cultureVariant in navigation.Where(cultureVariant => !cultureVariant.Key.Equals(currentCulture)))
-				{
-					var otherCultureNavigationItem = _navigationRepository.GetNavigationItemByNodeId(currentPageNavigationItem.NodeId, cultureVariant.Value);
+                foreach (var cultureVariant in navigation.Where(cultureVariant => !cultureVariant.Key.Equals(currentCulture)))
+                {
+                    var otherCultureNavigationItem = _navigationRepository.GetNavigationItemByNodeId(currentPageNavigationItem.NodeId, cultureVariant.Value);
 
-					if (otherCultureNavigationItem != null)
-					{
-						databaseVariants.Add(new KeyValuePair<SiteCulture, NavigationItem>(cultureVariant.Key, otherCultureNavigationItem));
-					}
-				}
+                    if (otherCultureNavigationItem != null)
+                    {
+                        databaseVariants.Add(new KeyValuePair<SiteCulture, NavigationItem>(cultureVariant.Key, otherCultureNavigationItem));
+                    }
+                }
 
-				return databaseVariants.Select(variant => new KeyValuePair<SiteCulture, string>(variant.Key, variant.Value.RelativeUrl!));
-			}
+                return databaseVariants.Select(variant => new KeyValuePair<SiteCulture, string>(variant.Key, variant.Value.RelativeUrl!));
+            }
 
-			return null;
-		}
+            return null;
+        }
 
-		private IEnumerable<KeyValuePair<SiteCulture, string>>? GetNonDatabaseUrlVariants(string searchPath)
-		{
-			var cultures = _siteCultureRepository.GetAll();
-			var segments = searchPath.Split('/');
+        private NavigationItem? GetNavigationItemByRelativeUrl(string searchPath, NavigationItem startingPointItem)
+        {
+            if (startingPointItem != null)
+            {
+                var parsed = Url.Content(startingPointItem.RelativeUrl);
 
-			if (cultures.Any(culture => culture.IsoCode?.Equals(segments?[1], StringComparison.InvariantCultureIgnoreCase) == true))
-			{
-				var trailingPath = string.Join('/', segments.Skip(2));
+                if (parsed?.Equals(searchPath, StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return startingPointItem;
+                }
+                else if (startingPointItem.ChildItems?.Any() == true)
+                {
+                    var matches = new List<NavigationItem>();
 
-				return cultures.Select(culture => new KeyValuePair<SiteCulture, string>(culture, $"/{culture.IsoCode?.ToLower()}/{trailingPath}"));
-			}
+                    foreach (var child in startingPointItem.ChildItems)
+                    {
+                        var childMatch = GetNavigationItemByRelativeUrl(searchPath, child);
+                        matches.Add(childMatch!);
+                    }
 
-			return null;
-		}
+                    return matches.FirstOrDefault(match => match != null);
+                }
+            }
 
-		private IEnumerable<KeyValuePair<SiteCulture, string>>? GetUrlCultureVariants()
-		{
-			var defaultCulture = _siteCultureRepository.DefaultSiteCulture;
-			var searchPath = Request.Path.Equals("/") && defaultCulture != null ? $"/{defaultCulture.IsoCode?.ToLowerInvariant()}/home/" : Request.Path.Value;
-			var currentCulture = Thread.CurrentThread.CurrentUICulture.ToSiteCulture();
+            return null;
+        }
 
-			if (currentCulture != null)
-			{
-				return GetDatabaseUrlVariants(searchPath, currentCulture) ?? GetNonDatabaseUrlVariants(searchPath);
-			}
+        private IEnumerable<KeyValuePair<SiteCulture, string>>? GetNonDatabaseUrlVariants(string searchPath)
+        {
+            var cultures = _siteCultureRepository.GetAll();
+            var segments = searchPath.Split('/');
 
-			return null;
-		}
+            if (cultures.Any(culture => culture.IsoCode?.Equals(segments?[1], StringComparison.InvariantCultureIgnoreCase) == true))
+            {
+                var trailingPath = string.Join('/', segments.Skip(2));
 
-		public IViewComponentResult Invoke(string cultureSwitchId)
-		{
-			var variants = GetUrlCultureVariants();
-			var model = (cultureSwitchId, variants.ToDictionary(kvp1 => kvp1.Key, kvp2 => kvp2.Value));
+                return cultures.Select(culture => new KeyValuePair<SiteCulture, string>(culture, $"/{culture.IsoCode?.ToLower()}/{trailingPath}"));
+            }
 
-			return View(model);
-		}
-	}
+            return null;
+        }
+    }
 }

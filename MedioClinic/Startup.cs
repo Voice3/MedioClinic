@@ -136,21 +136,24 @@ namespace MedioClinic
 
             app.UseBrowserLink();
 
-           // app.UseCookiePolicy();
+            // app.UseCookiePolicy();
 
             //app.UseCors();
 
-           // app.UseAuthentication();
+            // app.UseAuthentication();
             // app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.Kentico().MapRoutes();
 
-                endpoints.MapGet("/", async context =>
-                {
-                    await context.Response.WriteAsync("The site has not been configured yet.");
-                });
+                endpoints.MapControllerRoute(
+                    name: "error",
+                    pattern: "{culture}/error/{code}",
+                    defaults: new { controller = "Error", action = "Index" }
+                    );
+
+                endpoints.MapDefaultControllerRoute();
             });
         }
     }
